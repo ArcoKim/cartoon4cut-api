@@ -1,0 +1,4 @@
+aioboto3
+aiohttp
+pillow
+requests_toolbelt

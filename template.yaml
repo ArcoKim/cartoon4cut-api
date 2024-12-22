@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Cartoon4Cut Project
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+    Timeout: 60
+    Handler: app.lambda_handler
+    Environment:
+      Variables:
+        BUCKET_NAME: smc-cartoon-image
+
+Resources:
+  SmcApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+
+  SmcAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/smc-auth
+      Events:
+        GetFilter:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmcApi
+            Path: /auth
+            Method: GET
+
+  SmcFilterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/smc-filter
+      Events:
+        GetFilter:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmcApi
+            Path: /filter
+            Method: GET
+      Policies:
+        - AmazonS3ReadOnlyAccess
+
+  SmcFrameFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/smc-frame
+      Events:
+        GetFrame:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmcApi
+            Path: /frame
+            Method: GET
+      Policies:
+        - AmazonS3ReadOnlyAccess
+
+  SmcImageReturnFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/smc-image-return
+      Events:
+        PostImage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmcApi
+            Path: /image
+            Method: POST
+      Policies:
+        - AmazonS3ReadOnlyAccess
+    
+  SmcImageUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/smc-image-upload
+      Events:
+        PutImage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmcApi
+            Path: /image
+            Method: PUT
+      Policies:
+      - Statement:
+        - Sid: AppAccess
+          Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:ListBucket
+            - ec2:DescribeInstances
+          Resource: '*'
+
+  SmcPrintFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/smc-print
+      Events:
+        PostPrint:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmcApi
+            Path: /print
+            Method: POST
+      Policies:
+      - Statement:
+        - Sid: S3Access
+          Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:ListBucket
+          Resource: '*'
+
+Outputs:
+  SmcApi:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${SmcApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  SmcFilterFunction:
+    Description: "SMC Filter Function ARN"
+    Value: !GetAtt SmcFilterFunction.Arn
+  SmcFrameFunction:
+    Description: "SMC Frame Function ARN"
+    Value: !GetAtt SmcFrameFunction.Arn
+  SmcImageReturnFunction:
+    Description: "SMC Image Return Function ARN"
+    Value: !GetAtt SmcImageReturnFunction.Arn
+  SmcImageUploadFunction:
+    Description: "SMC Image Upload Function ARN"
+    Value: !GetAtt SmcImageUploadFunction.Arn
+  SmcPrintFunction:
+    Description: "SMC Print Function ARN"
+    Value: !GetAtt SmcPrintFunction.Arn
